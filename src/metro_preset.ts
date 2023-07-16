@@ -33,14 +33,6 @@ const metro_perset_plugin = () => {
                 );
                 entry_file_code += `import "./lib/shopee${index}.js";\n`;
               }
-              // chunks.forEach((chunk) => {
-              //   fs.writeFileSync(
-              //     path.resolve(lib_dir_path, `shopee${index}.js`),
-              //     chunk
-              //   );
-              //   entry_file_code += `import "./lib/shopee${index}.js";\n`;
-              //   index = index + 1;
-              // });
               fs.writeFileSync(file.path, entry_file_code);
             } else if (file.path.endsWith('.png')) {
               const png_file_path = path.resolve(

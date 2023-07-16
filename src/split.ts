@@ -1,4 +1,5 @@
 import { export_calc } from './export_calc';
+import { resolve_disk_path } from './disk_path';
 
 interface ExportInfo {
   index: number;
@@ -8,13 +9,14 @@ interface ExportInfo {
 }
 
 /**
- * 切割 esbuild 打包后的代码 根据 //file:xxx.ts 标记 切割
- * @param code esbuild 输出的代码
+ * split esbuild code accroding //file:xxx.ts as mark
+ * @param code esbuild output code string
  * @param external_packages
  * @returns
  */
 function split_esbuild_output_chunk(
   code: string,
+  working_dir: string,
   external_packages: string[] = []
 ): Map<number, ExportInfo> {
   //begin split
@@ -42,17 +44,17 @@ function split_esbuild_output_chunk(
             char_perfix_txt.endsWith('.json\n')
           ) {
             if (stream.trim() !== '') {
-              const export_res = export_calc(stream, external_packages);
+              const export_res = export_calc(stream);
               export_hashmap.set(file_index, {
                 index: file_index,
-                file_location: file_location,
+                file_location: resolve_disk_path(file_location, working_dir),
                 code: export_res.code,
                 export_specifiers: export_res.specifiers,
               });
               file_index += 1;
               stream = '';
             }
-            file_location = char_perfix;
+            file_location = char_perfix_txt.trim();
             char_perfix_txt = '';
           } else {
             char_perfix_txt = '';
@@ -62,10 +64,10 @@ function split_esbuild_output_chunk(
       }
     }
     if (i === content.length - 1) {
-      const export_res = export_calc(stream, external_packages);
+      const export_res = export_calc(stream);
       export_hashmap.set(file_index, {
         index: file_index,
-        file_location: file_location,
+        file_location: resolve_disk_path(file_location, working_dir),
         code: export_res.code,
         export_specifiers: export_res.specifiers,
       });

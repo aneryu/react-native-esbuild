@@ -9,7 +9,7 @@ import { split_esbuild_output_chunk } from './split';
  */
 const metro_perset_plugin = () => {
   return {
-    name: 'reactnatie-resolve-plugin',
+    name: 'metro-split-plugin',
     setup(build: esbuild.PluginBuild) {
       build.onEnd((res) => {
         if (!res.errors || res.errors?.length === 0) {
@@ -24,6 +24,7 @@ const metro_perset_plugin = () => {
               let index = 1;
               const output_chunks_map = split_esbuild_output_chunk(
                 file.text,
+                build.initialOptions.absWorkingDir ?? process.cwd(),
                 build.initialOptions.external ?? []
               );
               for (let [index, info] of output_chunks_map.entries()) {

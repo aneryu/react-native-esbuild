@@ -2,6 +2,11 @@ import * as esbuild from "esbuild";
 import path from "path";
 import fs from "fs";
 
+/**
+ * esbuild support platform resolve plugin about module-resolver ios|android
+ * @param platform ios|android
+ * @returns 
+ */
 const platform_ResolvePlugin = (platform: string) => {
   return {
     name: "reactnatie-resolve-plugin",

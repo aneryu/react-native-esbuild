@@ -8,8 +8,7 @@ import traverse from '@babel/traverse';
  * @returns
  */
 function export_calc(
-  code: string,
-  external_packages: string[] = []
+  code: string
 ): { code: string; specifiers: string[] } {
   let export_specifiers: string[] = [];
   const ast = parse(code, { sourceType: 'module', plugins: ['jsx', 'flow'] });
@@ -150,12 +149,12 @@ var styles = StyleSheet.create({
 var App_default = App;
 `;
 
-const import_test_code = `
-import { AppRegistry as app } from "react-native";
-import * as rn from "react-native";
-import reactnative from "react-native";
-import { AppRegistry } from "react-native";
-`;
+// const import_test_code = `
+// import { AppRegistry as app } from "react-native";
+// import * as rn from "react-native";
+// import reactnative from "react-native";
+// import { AppRegistry } from "react-native";
+// `;
 
 if (process.env.TESTCASE === 'true') {
   export_calc(test_code);

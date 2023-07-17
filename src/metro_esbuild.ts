@@ -16,13 +16,14 @@ async function makebundle(
   workdir: string,
   bundle: boolean = false
 ) {
+  
   // 兼容 metro 的 插件
   const base_plugins = [platform_ResolvePlugin("ios")];
 
   const plugins = [
     ...base_plugins,
     metro_perset_plugin(),
-    // import_recording_plugin(),
+    import_recording_plugin(),
   ];
 
   // independent common packages

@@ -1,6 +1,7 @@
-import path from 'node:path';
-import * as esbuild from 'esbuild';
-import resolve from 'enhanced-resolve';
+import path from "node:path";
+import fs from "node:fs";
+import * as esbuild from "esbuild";
+import resolve from "enhanced-resolve";
 
 let en_reolver: resolve.ResolveFunction | undefined = undefined;
 let import_recording: Map<string, string[]> | undefined = undefined;
@@ -23,16 +24,35 @@ async function resolve_diskpath(
 }
 
 /**
+ * handle import alias like '~/assets'
+ */
+function handle_import_alias(workdir: string) {
+  const alias_config_path = path.resolve(workdir, "./alias.config.js");
+  if (fs.existsSync(alias_config_path)) {
+    const alias_config = require(alias_config_path)?.alias;
+    let esbuild_alias_config: { [key: string]: string } = {};
+    Object.entries(alias_config).forEach(([key, value]) => {
+      esbuild_alias_config[key] = path.resolve(workdir, value as string);
+    });
+    return esbuild_alias_config;
+  } else {
+    console.warn(`alias.config.js not exist in ${workdir}!`);
+    return {};
+  }
+}
+
+/**
  * esbuild plugin import recording file location and disk location
  * @returns
  */
 const import_recording_plugin = () => {
   return {
-    name: 'reactnatie-resolve-plugin',
+    name: "reactnatie-resolve-plugin",
     setup(build: esbuild.PluginBuild) {
       build.onStart(() => {
         en_reolver = resolve.create.sync({
-          extensions: ['.js', '.jsx', '.ts', '.tsx'],
+          extensions: [".js", ".jsx", ".ts", ".tsx"],
+          alias: handle_import_alias(build.initialOptions.absWorkingDir!),
         });
         import_recording = new Map();
       });
@@ -42,7 +62,7 @@ const import_recording_plugin = () => {
           (build.initialOptions.external?.filter((exter) =>
             arg.path.includes(exter)
           ).length ?? 0) == 0 &&
-          arg.kind === 'import-statement'
+          arg.kind === "import-statement"
         ) {
           const res = await resolve_diskpath(
             en_reolver!,

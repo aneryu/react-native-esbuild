@@ -9,7 +9,7 @@ const entryPoints = [
   // "/Users/zhushijie/Desktop/workspace/AwesomeProject/index.js"
 ];
 // const workdir = "/Users/zhushijie/Desktop/workspace/AwesomeProject/";
-const workdir = "/Users/jason.zhu/Desktop/company/product-page/";
+const workdir = "/Users/jason.zhu/Desktop/company/product-page/plugins/product-page/";
 
 if (process.env.NodeBundle === "true") {
   const outputfile2 = path.resolve(__dirname, "../output/lib.js");

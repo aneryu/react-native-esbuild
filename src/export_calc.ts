@@ -1,5 +1,5 @@
-import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import { ParseResult, parse } from "@babel/parser";
+import traverse from "@babel/traverse";
 
 /**
  *
@@ -7,15 +7,26 @@ import traverse from '@babel/traverse';
  * @param external_packages
  * @returns
  */
-function export_calc(
-  code: string
-): { code: string; specifiers: string[] } {
+function export_calc(code: string): { code: string; specifiers: string[] } {
   let export_specifiers: string[] = [];
-  const ast = parse(code, { sourceType: 'module', plugins: ['jsx', 'flow'] });
-  traverse(ast, {
+  let ast: any = undefined;
+  try {
+    ast = parse(code, {
+      sourceType: "module",
+      plugins: ["jsx", "flow"],
+    });
+  } catch (ex) {
+    console.log(
+      `parse error ---->
+    ${code}
+    `,
+      ex
+    );
+  }
+  traverse(ast!, {
     enter(path) {
       if (path.isVariableDeclaration(path.node)) {
-        if (path.node.kind === 'var' && path.parent.type === 'Program') {
+        if (path.node.kind === "var" && path.parent.type === "Program") {
           const info: any = path.node.declarations[0];
           if (info) {
             export_specifiers.push(info.id.name);
@@ -24,7 +35,7 @@ function export_calc(
         }
       } else if (
         path.isImportDeclaration(path.node) &&
-        path.parent.type === 'Program'
+        path.parent.type === "Program"
       ) {
         // 调试 内存复制 ast 信息
         // memorycopy(JSON.stringify(path.node, null, 2));
@@ -47,7 +58,7 @@ function export_calc(
     const final_code = `
   ${code}
    
-export { ${export_specifiers.join(', ')} };
+export { ${export_specifiers.join(", ")} };
   `;
     return { code: final_code, specifiers: export_specifiers };
   }
@@ -156,7 +167,7 @@ var App_default = App;
 // import { AppRegistry } from "react-native";
 // `;
 
-if (process.env.TESTCASE === 'true') {
+if (process.env.TESTCASE === "true") {
   export_calc(test_code);
   // export_calc(import_test_code);
 }

@@ -6,7 +6,7 @@
   "main": "index.js",
   "scripts": {
     "setup": "rm -rf node_modules && npm install",
-    "test": "rm -rf ./temp/* && ts-node-dev ./src/index.ts",
+    "test": "rm -rf ./temp/* && NodeBundle=false ts-node-dev ./src/index.ts",
     "dev": "TESTCASE=true ts-node-dev ./src/print.ts",
     "build": "tsc"
   },

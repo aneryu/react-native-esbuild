@@ -64,12 +64,12 @@ function split_esbuild_output_chunk(
       }
     }
     if (i === content.length - 1) {
-      const export_res = export_calc(stream);
+      // const export_res = export_calc(stream);
       export_hashmap.set(file_index, {
         index: file_index,
         file_location: resolve_disk_path(file_location, working_dir),
-        code: export_res.code,
-        export_specifiers: export_res.specifiers,
+        code: stream,
+        export_specifiers: [],
       });
       file_index += 1;
       stream = '';

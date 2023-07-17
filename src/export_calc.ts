@@ -1,4 +1,4 @@
-import { ParseResult, parse } from "@babel/parser";
+import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
 
 /**
@@ -7,7 +7,10 @@ import traverse from "@babel/traverse";
  * @param external_packages
  * @returns
  */
-function export_calc(code: string): { code: string; specifiers: string[] } {
+function export_calc(
+  code: string,
+  file_index: number
+): { code: string; specifiers: string[] } {
   let export_specifiers: string[] = [];
   let ast: any = undefined;
   try {
@@ -16,11 +19,8 @@ function export_calc(code: string): { code: string; specifiers: string[] } {
       plugins: ["jsx", "flow"],
     });
   } catch (ex) {
-    console.log(
-      `parse error ---->
-    ${code}
-    `,
-      ex
+    throw new Error(
+      `parse error ----> \n index: ${file_index} \n ${code} \n ex: \n ${ex}`
     );
   }
   traverse(ast!, {
@@ -29,8 +29,15 @@ function export_calc(code: string): { code: string; specifiers: string[] } {
         if (path.node.kind === "var" && path.parent.type === "Program") {
           const info: any = path.node.declarations[0];
           if (info) {
-            export_specifiers.push(info.id.name);
-            // console.log(info.id.name);
+            if (info.id.name) {
+              // example var obj = {a: 1, b: 2};
+              export_specifiers.push(info.id.name);
+            } else if (info.id.properties.length > 0) {
+              // example var {a, b} = {a: 1, b: 2};
+              info.id.properties.forEach((p: any) => {
+                export_specifiers.push(p.value.name);
+              });
+            }
           }
         }
       } else if (
@@ -168,6 +175,6 @@ var App_default = App;
 // `;
 
 if (process.env.TESTCASE === "true") {
-  export_calc(test_code);
+  export_calc(test_code, 0);
   // export_calc(import_test_code);
 }

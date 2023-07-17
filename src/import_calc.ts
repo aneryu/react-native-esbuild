@@ -55,6 +55,7 @@ const import_recording_plugin = () => {
           alias: handle_import_alias(build.initialOptions.absWorkingDir!),
         });
         import_recording = new Map();
+        Reflect.set(build.initialOptions, "import_records", import_recording);
       });
       build.onResolve({ filter: /.*/ }, async (arg: esbuild.OnResolveArgs) => {
         // console.log(arg.path, '\n', arg.kind);

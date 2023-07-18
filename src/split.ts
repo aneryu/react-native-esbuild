@@ -52,7 +52,6 @@ function split_esbuild_output_chunk(
                 file_index,
                 export_hashmap,
                 import_hashmap: import_records,
-                is_entry: false,
               });
               const export_res = export_calc(temp_code, file_index);
               // link import from other js_file
@@ -82,7 +81,6 @@ function split_esbuild_output_chunk(
         file_index,
         export_hashmap,
         import_hashmap: import_records,
-        is_entry: true,
       });
       const export_res = export_calc(temp_code, file_index);
       export_hashmap.set(file_index, {

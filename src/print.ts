@@ -205,7 +205,6 @@ function print_import_code({
   file_index: number;
   export_hashmap: Map<number, ExportInfo>;
   import_hashmap: Map<string, string[]>;
-  is_entry: boolean;
 }) {
   let handle_code = code;
   let ast: ParseResult<_babel_types.File>;

@@ -1,5 +1,5 @@
-import { parse } from "@babel/parser";
-import traverse from "@babel/traverse";
+import { parse } from '@babel/parser';
+import traverse from '@babel/traverse';
 
 /**
  *
@@ -15,8 +15,8 @@ function export_calc(
   let ast: any = undefined;
   try {
     ast = parse(code, {
-      sourceType: "module",
-      plugins: ["jsx", "flow"],
+      sourceType: 'module',
+      plugins: ['jsx', 'flow'],
     });
   } catch (ex) {
     throw new Error(
@@ -25,24 +25,34 @@ function export_calc(
   }
   traverse(ast!, {
     enter(path) {
-      if (path.isVariableDeclaration(path.node)) {
-        if (path.node.kind === "var" && path.parent.type === "Program") {
-          const info: any = path.node.declarations[0];
-          if (info) {
-            if (info.id.name) {
-              // example var obj = {a: 1, b: 2};
-              export_specifiers.push(info.id.name);
-            } else if (info.id.properties.length > 0) {
-              // example var {a, b} = {a: 1, b: 2};
-              info.id.properties.forEach((p: any) => {
-                export_specifiers.push(p.value.name);
-              });
-            }
+      if (
+        path.isVariableDeclaration(path.node) &&
+        path.node.kind === 'var' &&
+        path.parent.type === 'Program'
+      ) {
+        const info: any = path.node.declarations[0];
+        if (info) {
+          if (info.id.name) {
+            // example var obj = {a: 1, b: 2};
+            export_specifiers.push(info.id.name);
+          } else if (info.id.properties.length > 0) {
+            // example var {a, b} = {a: 1, b: 2};
+            info.id.properties.forEach((p: any) => {
+              export_specifiers.push(p.value.name);
+            });
           }
         }
       } else if (
+        path.isFunctionDeclaration(path.node) &&
+        path.parent.type === 'Program'
+      ) {
+        // example function func abc() {}
+        if (path.node.id?.name) {
+          export_specifiers.push(path.node.id.name);
+        }
+      } else if (
         path.isImportDeclaration(path.node) &&
-        path.parent.type === "Program"
+        path.parent.type === 'Program'
       ) {
         // 调试 内存复制 ast 信息
         // memorycopy(JSON.stringify(path.node, null, 2));
@@ -65,7 +75,7 @@ function export_calc(
     const final_code = `
   ${code}
    
-export { ${export_specifiers.join(", ")} };
+export { ${export_specifiers.join(', ')} };
   `;
     return { code: final_code, specifiers: export_specifiers };
   }
@@ -174,7 +184,7 @@ var App_default = App;
 // import { AppRegistry } from "react-native";
 // `;
 
-if (process.env.TESTCASE === "true") {
+if (process.env.TESTCASE === 'true') {
   export_calc(test_code, 0);
   // export_calc(import_test_code);
 }

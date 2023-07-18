@@ -199,7 +199,6 @@ function print_import_code({
   file_index,
   export_hashmap,
   import_hashmap,
-  is_entry,
 }: {
   code: string;
   filepath: string;
@@ -208,12 +207,14 @@ function print_import_code({
   import_hashmap: Map<string, string[]>;
   is_entry: boolean;
 }) {
-  let handle_code = is_entry ? fix_entry_code(code) : code;
+  let handle_code = code;
   let ast: ParseResult<_babel_types.File>;
   try {
     ast = parse(handle_code, {
       sourceType: 'module',
       plugins: ['jsx', 'flow'],
+      allowImportExportEverywhere: true,
+      allowUndeclaredExports: true,
     });
   } catch (e) {
     throw new Error(
@@ -266,4 +267,4 @@ function print_import_code({
   return handle_code;
 }
 
-export { print_import_code, replace_space };
+export { print_import_code, replace_space, fix_entry_code };

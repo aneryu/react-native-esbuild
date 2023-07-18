@@ -17,6 +17,8 @@ function export_calc(
     ast = parse(code, {
       sourceType: 'module',
       plugins: ['jsx', 'flow'],
+      allowImportExportEverywhere: true,
+      allowUndeclaredExports: true,
     });
   } catch (ex) {
     throw new Error(

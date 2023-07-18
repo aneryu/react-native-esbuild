@@ -1,8 +1,8 @@
-import { ParseResult, parse } from "@babel/parser";
-import * as _babel_types from "@babel/types";
-import generate from "@babel/generator";
-import traverse from "@babel/traverse";
-import { ExportInfo } from "./split";
+import { ParseResult, parse } from '@babel/parser';
+import * as _babel_types from '@babel/types';
+import generate from '@babel/generator';
+import traverse from '@babel/traverse';
+import { ExportInfo } from './split';
 
 interface ImportInfo {
   index: number;
@@ -15,7 +15,7 @@ interface ImportInfo {
  * @returns
  */
 function replace_space(code: string) {
-  return code.replace(/[\r\n]/g, "").replace(/\ +/g, "");
+  return code.replace(/[\r\n]/g, '').replace(/\ +/g, '');
 }
 
 /**
@@ -45,7 +45,7 @@ function get_esbuild_runtime(
 ): ExportInfo | undefined {
   const export_infos = Array.from(export_hashmap.values());
   const runtime_info = export_infos.find(
-    (export_info) => export_info.file_location === "esbuild_runtime"
+    (export_info) => export_info.file_location === 'esbuild_runtime'
   );
   return runtime_info;
 }
@@ -107,22 +107,22 @@ function check_and_add_specifiers_referenced(
             const code_source = `./shopee${info.index}.js`;
             const real_specifiers = specifiers.map((sp) => {
               return {
-                type: "ImportSpecifier",
+                type: 'ImportSpecifier',
                 imported: {
-                  type: "Identifier",
+                  type: 'Identifier',
                   name: sp,
                 },
                 local: {
-                  type: "Identifier",
+                  type: 'Identifier',
                   name: sp,
                 },
               };
             });
             path.node.body.unshift({
-              type: "ImportDeclaration",
+              type: 'ImportDeclaration',
               specifiers: real_specifiers,
               source: {
-                type: "StringLiteral",
+                type: 'StringLiteral',
                 extra: {
                   rawValue: code_source,
                   raw: `'${code_source}'`,
@@ -161,6 +161,34 @@ function add_import(
 }
 
 /**
+ * fix entry code
+ * @param code
+ */
+function fix_entry_code(code: string) {
+  const regex = /^export\s+{([^}]+)}\s*;?$/gm;
+  const res = code.match(regex);
+  if (res?.length ?? 0 > 0) {
+    let spec: string[] = [];
+    let new_code = '';
+    res!.forEach((item) => {
+      const content = replace_space(item);
+      const export_specifiers = content
+        .replace('export{', '')
+        .replace('};', '')
+        .replace('}', '')
+        .split(',');
+      spec = [...spec, ...export_specifiers];
+      export_specifiers.forEach((specifier) => {
+        new_code += `console.log(${specifier}); \n`;
+      });
+    });
+    return new_code;
+  } else {
+    return code;
+  }
+}
+
+/**
  * genrate import code
  * @param param0
  * @returns
@@ -171,30 +199,31 @@ function print_import_code({
   file_index,
   export_hashmap,
   import_hashmap,
+  is_entry,
 }: {
   code: string;
   filepath: string;
   file_index: number;
   export_hashmap: Map<number, ExportInfo>;
   import_hashmap: Map<string, string[]>;
+  is_entry: boolean;
 }) {
-  let handle_code = code;
+  let handle_code = is_entry ? fix_entry_code(code) : code;
   let ast: ParseResult<_babel_types.File>;
   try {
     ast = parse(handle_code, {
-      sourceType: "module",
-      plugins: ["jsx", "flow"],
+      sourceType: 'module',
+      plugins: ['jsx', 'flow'],
     });
   } catch (e) {
-    // throw new Error(
-    //   `parse code error: ${e} \n index: ${file_index} \n file: ${filepath} \n code: ${code}`
-    // );
-    console.log(e);
+    throw new Error(
+      `parse code error: ${e} \n index: ${file_index} \n file: ${filepath} \n code: ${code}`
+    );
   }
   const import_specifiers: ImportInfo[] = [];
   const runtime_info = get_esbuild_runtime(export_hashmap);
   // 如果esbuild 产生了 runtime  就需要额外去处理 runtime导出的函数
-  if (runtime_info && filepath !== "esbuild_runtime") {
+  if (runtime_info && filepath !== 'esbuild_runtime') {
     const runtime_specifiers = runtime_info!.export_specifiers;
     if (runtime_specifiers.length > 0) {
       import_specifiers.push({

@@ -1,5 +1,5 @@
-import { parse } from '@babel/parser';
-import traverse from '@babel/traverse';
+import { parse } from "@babel/parser";
+import traverse from "@babel/traverse";
 
 /**
  *
@@ -15,8 +15,8 @@ function export_calc(
   let ast: any = undefined;
   try {
     ast = parse(code, {
-      sourceType: 'module',
-      plugins: ['jsx', 'flow'],
+      sourceType: "module",
+      plugins: ["jsx", "flow"],
       allowImportExportEverywhere: true,
       allowUndeclaredExports: true,
     });
@@ -29,8 +29,8 @@ function export_calc(
     enter(path) {
       if (
         path.isVariableDeclaration(path.node) &&
-        path.node.kind === 'var' &&
-        path.parent.type === 'Program'
+        path.node.kind === "var" &&
+        path.parent.type === "Program"
       ) {
         const info: any = path.node.declarations[0];
         if (info) {
@@ -46,7 +46,7 @@ function export_calc(
         }
       } else if (
         path.isFunctionDeclaration(path.node) &&
-        path.parent.type === 'Program'
+        path.parent.type === "Program"
       ) {
         // example function func abc() {}
         if (path.node.id?.name) {
@@ -54,14 +54,16 @@ function export_calc(
         }
       } else if (
         path.isImportDeclaration(path.node) &&
-        path.parent.type === 'Program'
+        path.parent.type === "Program"
       ) {
         // 调试 内存复制 ast 信息
         // memorycopy(JSON.stringify(path.node, null, 2));
         const specifiers_names: string[] = [];
-        path.node.specifiers.forEach((sp) => {
-          specifiers_names.push(sp.local.name);
-        });
+        if (!path.node.source.value.includes("./shopee")) {
+          path.node.specifiers.forEach((sp) => {
+            specifiers_names.push(sp.local.name);
+          });
+        }
         // 查看所有的 spec
         // console.log('----->', specifiers_names);
         const none_reference_specifiers = specifiers_names.filter((sp) => {
@@ -77,7 +79,7 @@ function export_calc(
     const final_code = `
   ${code}
    
-export { ${export_specifiers.join(', ')} };
+export { ${export_specifiers.join(", ")} };
   `;
     return { code: final_code, specifiers: export_specifiers };
   }
@@ -186,7 +188,7 @@ var App_default = App;
 // import { AppRegistry } from "react-native";
 // `;
 
-if (process.env.TESTCASE === 'true') {
+if (process.env.TESTCASE === "true") {
   export_calc(test_code, 0);
   // export_calc(import_test_code);
 }

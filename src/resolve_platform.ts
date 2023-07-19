@@ -5,13 +5,30 @@ import fs from "fs";
 /**
  * esbuild support platform resolve plugin about module-resolver ios|android
  * @param platform ios|android
- * @returns 
+ * @returns
  */
-const platform_ResolvePlugin = (platform: string) => {
+const platform_ResolvePlugin = (platform: string, alias: string[][] = []) => {
   return {
     name: "reactnatie-resolve-plugin",
     setup(build: esbuild.PluginBuild) {
       build.onResolve({ filter: /.*/ }, async (arg: esbuild.OnResolveArgs) => {
+        for (const [prefix, pathPrefix] of alias) {
+          if (arg.path.startsWith(prefix)) {
+            const newpath = arg.path.replace(prefix, pathPrefix);
+            if (fs.existsSync(newpath)) {
+              arg.path = newpath;
+              break;
+            }
+          }
+        }
+        if (arg.path.endsWith(".png")) {
+          const p = path.resolve(arg.resolveDir, arg.path);
+          return {
+            path: p,
+            external: true,
+          };
+        }
+        // support png alias 
         if (arg.importer.includes("node_modules")) {
           const extname = path.extname(arg.importer);
           const import_extname = path.extname(arg.path);

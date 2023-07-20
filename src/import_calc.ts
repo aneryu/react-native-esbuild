@@ -13,7 +13,7 @@ let import_recording: Map<string, string[]> | undefined = undefined;
  * @param importer
  * @returns
  */
-async function resolve_diskpath(
+function resolve_diskpath(
   resolve_sys: resolve.ResolveFunction,
   path_value: string,
   importer: string
@@ -59,17 +59,8 @@ const import_recording_plugin = () => {
       });
       build.onResolve({ filter: /.*/ }, async (arg: esbuild.OnResolveArgs) => {
         // console.log(arg.path, '\n', arg.kind);
-        if (
-          (build.initialOptions.external?.filter((exter) =>
-            arg.path.includes(exter)
-          ).length ?? 0) == 0 &&
-          arg.kind === "import-statement"
-        ) {
-          const res = await resolve_diskpath(
-            en_reolver!,
-            arg.path,
-            arg.importer
-          );
+        if (arg.kind === "import-statement") {
+          const res = resolve_diskpath(en_reolver!, arg.path, arg.importer);
           if (res) {
             if (!import_recording?.has(arg.importer)) {
               import_recording!.set(arg.importer, [res]);

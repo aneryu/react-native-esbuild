@@ -1,8 +1,8 @@
-import { ParseResult, parse } from '@babel/parser';
-import * as _babel_types from '@babel/types';
-import generate from '@babel/generator';
-import traverse from '@babel/traverse';
-import { ExportInfo } from './split';
+import { ParseResult, parse } from "@babel/parser";
+import * as _babel_types from "@babel/types";
+import generate from "@babel/generator";
+import traverse from "@babel/traverse";
+import { ExportInfo } from "./split";
 
 interface ImportInfo {
   index: number;
@@ -15,7 +15,7 @@ interface ImportInfo {
  * @returns
  */
 function replace_space(code: string) {
-  return code.replace(/[\r\n]/g, '').replace(/\ +/g, '');
+  return code.replace(/[\r\n]/g, "").replace(/\ +/g, "");
 }
 
 /**
@@ -45,7 +45,7 @@ function get_esbuild_runtime(
 ): ExportInfo | undefined {
   const export_infos = Array.from(export_hashmap.values());
   const runtime_info = export_infos.find(
-    (export_info) => export_info.file_location === 'esbuild_runtime'
+    (export_info) => export_info.file_location === "esbuild_runtime"
   );
   return runtime_info;
 }
@@ -74,6 +74,10 @@ function check_referenced(
   traverse(ast!, {
     enter(path) {
       if (path.isIdentifier(path.node) && !path.parentPath.isObjectProperty()) {
+        if (path.node.name === sp) {
+          res = true;
+        }
+      } else if (path.isJSXIdentifier(path.node)) {
         if (path.node.name === sp) {
           res = true;
         }
@@ -107,22 +111,22 @@ function check_and_add_specifiers_referenced(
             const code_source = `./shopee${info.index}.js`;
             const real_specifiers = specifiers.map((sp) => {
               return {
-                type: 'ImportSpecifier',
+                type: "ImportSpecifier",
                 imported: {
-                  type: 'Identifier',
+                  type: "Identifier",
                   name: sp,
                 },
                 local: {
-                  type: 'Identifier',
+                  type: "Identifier",
                   name: sp,
                 },
               };
             });
             path.node.body.unshift({
-              type: 'ImportDeclaration',
+              type: "ImportDeclaration",
               specifiers: real_specifiers,
               source: {
-                type: 'StringLiteral',
+                type: "StringLiteral",
                 extra: {
                   rawValue: code_source,
                   raw: `'${code_source}'`,
@@ -169,14 +173,14 @@ function fix_entry_code(code: string) {
   const res = code.match(regex);
   if (res?.length ?? 0 > 0) {
     let spec: string[] = [];
-    let new_code = '';
+    let new_code = "";
     res!.forEach((item) => {
       const content = replace_space(item);
       const export_specifiers = content
-        .replace('export{', '')
-        .replace('};', '')
-        .replace('}', '')
-        .split(',');
+        .replace("export{", "")
+        .replace("};", "")
+        .replace("}", "")
+        .split(",");
       spec = [...spec, ...export_specifiers];
       export_specifiers.forEach((specifier) => {
         new_code += `console.log(${specifier}); \n`;
@@ -210,8 +214,8 @@ function print_import_code({
   let ast: ParseResult<_babel_types.File>;
   try {
     ast = parse(handle_code, {
-      sourceType: 'module',
-      plugins: ['jsx', 'flow'],
+      sourceType: "module",
+      plugins: ["jsx", "flow"],
       allowImportExportEverywhere: true,
       allowUndeclaredExports: true,
     });
@@ -223,7 +227,7 @@ function print_import_code({
   const import_specifiers: ImportInfo[] = [];
   const runtime_info = get_esbuild_runtime(export_hashmap);
   // 如果esbuild 产生了 runtime  就需要额外去处理 runtime导出的函数
-  if (runtime_info && filepath !== 'esbuild_runtime') {
+  if (runtime_info && filepath !== "esbuild_runtime") {
     const runtime_specifiers = runtime_info!.export_specifiers;
     if (runtime_specifiers.length > 0) {
       import_specifiers.push({
@@ -259,6 +263,9 @@ function print_import_code({
         specifiers: export_info.export_specifiers,
       });
     });
+  }
+  if (file_index === 9) {
+    debugger;
   }
   if (import_specifiers.length > 0) {
     handle_code = add_import(handle_code, ast!, import_specifiers);

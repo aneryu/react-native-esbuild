@@ -264,9 +264,6 @@ function print_import_code({
       });
     });
   }
-  if (file_index === 9) {
-    debugger;
-  }
   if (import_specifiers.length > 0) {
     handle_code = add_import(handle_code, ast!, import_specifiers);
   }

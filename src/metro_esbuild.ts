@@ -2,6 +2,7 @@ import * as esbuild from "esbuild";
 import { platform_ResolvePlugin } from "./resolve_platform";
 import { metro_perset_plugin } from "./metro_preset";
 import { import_recording_plugin } from "./import_calc";
+import { entry_add_console } from "./entry_console";
 
 /**
  * 调用 esbuild 去打包 plugin entry 的方法 支持 tree-shaking
@@ -16,9 +17,8 @@ async function makebundle(
   workdir: string,
   bundle: boolean = false
 ) {
-  
   // 兼容 metro 的 插件
-  const base_plugins = [platform_ResolvePlugin("ios")];
+  const base_plugins = [platform_ResolvePlugin("ios"), entry_add_console()];
 
   const plugins = [
     ...base_plugins,

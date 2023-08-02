@@ -1,4 +1,7 @@
 import * as esbuild from "esbuild";
+// @ts-ignore
+// import flow_plugin from "esbuild-plugin-flow";
+const flow_plugin = require("esbuild-plugin-flow");
 import { platform_ResolvePlugin } from "./resolve_platform";
 import { metro_perset_plugin } from "./metro_preset";
 import { import_recording_plugin } from "./import_calc";
@@ -18,7 +21,11 @@ async function makebundle(
   bundle: boolean = false
 ) {
   // 兼容 metro 的 插件
-  const base_plugins = [platform_ResolvePlugin("ios"), entry_add_console()];
+  const base_plugins = [
+    flow_plugin(/\.js$/),
+    platform_ResolvePlugin("ios"),
+    entry_add_console(),
+  ];
 
   const plugins = [
     ...base_plugins,
@@ -53,7 +60,18 @@ async function makebundle(
     "@shopee/global-env",
   ];
   // extra commonjs packages
-  const cjs_external = ["zlib", "@shopee/item-redux"];
+  const cjs_external = [
+    "@shopee/item-redux",
+    "zlib",
+    "http",
+    "https",
+    "fs",
+    "net",
+    "tty",
+    "url",
+    "stream",
+    "assert",
+  ];
 
   // custom external packages
   const custom_external = [
@@ -62,6 +80,8 @@ async function makebundle(
     "@shopee/rn-recommendation-item-card",
     "@shopee-rn/item-card",
     "*.png", // PS: ignore png !!!
+    "*.jpg",
+    "*.gif",
   ];
 
   // external packages
@@ -82,14 +102,15 @@ async function makebundle(
     absWorkingDir: workdir,
     mainFields: ["main", "module"],
     loader: {
-      ".png": "file",
-      ".svg": "text",
+      // ".png": "file",
+      // ".svg": "text",
       ".ts": "ts",
       ".tsx": "tsx",
       ".js": "tsx",
       ".jsx": "tsx",
       ".json": "json",
     },
+    // @ts-ignore
     plugins: bundle ? base_plugins : plugins,
     external,
   });

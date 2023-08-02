@@ -10,6 +10,7 @@ enum TestCase {
   "productpage",
   "AwesomeProject",
   "myplugin",
+  "shopeepay",
 }
 
 function getCase(casename: TestCase): ITestCase {
@@ -36,6 +37,11 @@ function getCase(casename: TestCase): ITestCase {
         ],
         workdir: "/Users/jason.zhu/Desktop/react-native/my-plugin/",
       };
+    case TestCase.shopeepay:
+      return {
+        entryPoints: ["<>/shopeepay-plugin/bundles/shopee/src/index.ts"],
+        workdir: "<>/shopeepay-plugin/",
+      };
     default:
       return {
         entryPoints: [
@@ -47,7 +53,7 @@ function getCase(casename: TestCase): ITestCase {
   }
 }
 
-const { entryPoints, workdir } = getCase(TestCase.myplugin);
+const { entryPoints, workdir } = getCase(TestCase.shopeepay);
 if (process.env.NodeBundle === "true") {
   const outputfile2 = path.resolve(__dirname, "../output/lib.js");
   makebundle(entryPoints, outputfile2, workdir, true)

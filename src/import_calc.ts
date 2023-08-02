@@ -51,8 +51,9 @@ const import_recording_plugin = () => {
     setup(build: esbuild.PluginBuild) {
       build.onStart(() => {
         en_reolver = resolve.create.sync({
-          extensions: [".js", ".jsx", ".ts", ".tsx"],
+          extensions: [".js", ".jsx", ".ts", ".tsx", "mjs"],
           alias: handle_import_alias(build.initialOptions.absWorkingDir!),
+          exportsFields: [],
         });
         import_recording = new Map();
         Reflect.set(build.initialOptions, "import_records", import_recording);
@@ -74,4 +75,4 @@ const import_recording_plugin = () => {
     },
   };
 };
-export { import_recording_plugin };
+export { handle_import_alias, import_recording_plugin };

@@ -2,13 +2,9 @@ import { export_calc } from "./export_calc";
 import { resolve_disk_path } from "./disk_path";
 import { print_import_code } from "./print";
 import { react_runtime } from "./react-runtime";
-
-interface ExportInfo {
-  index: number;
-  code: string;
-  export_specifiers: string[];
-  file_location: string;
-}
+import { AdditionalInfo, ExportInfo } from "./interface/codeinfo";
+import path from "node:path";
+import fs from "node:fs";
 
 /**
  * split esbuild code accroding //file:xxx.ts as mark
@@ -16,12 +12,14 @@ interface ExportInfo {
  * @param external_packages
  * @returns
  */
-function split_esbuild_output_chunk(
+async function split_esbuild_output_chunk(
   code: string,
   working_dir: string,
   import_records: Map<string, string[]>
-): Map<number, ExportInfo> {
+): Promise<Map<number, ExportInfo>> {
   //begin split
+  // support circular reference
+  const undefined_map = new Map<number, AdditionalInfo>();
   const export_hashmap = new Map<number, ExportInfo>();
   const content = "\n" + code;
   let stream = "";
@@ -41,20 +39,26 @@ function split_esbuild_output_chunk(
           if (
             char_perfix_txt.endsWith(".ts\n") ||
             char_perfix_txt.endsWith(".js\n") ||
+            char_perfix_txt.endsWith(".mjs\n") ||
             char_perfix_txt.endsWith(".jsx\n") ||
             char_perfix_txt.endsWith(".tsx\n") ||
             char_perfix_txt.endsWith(".json\n")
           ) {
             if (stream.trim() !== "") {
               const diskpath = resolve_disk_path(file_location, working_dir);
-              const temp_code = print_import_code({
+              const temp_code = await print_import_code({
                 code: stream,
                 filepath: diskpath,
                 file_index,
                 export_hashmap,
-                import_hashmap: import_records,
+                undefined_map,
               });
-              const export_res = export_calc(temp_code, file_index);
+              const export_res = export_calc(
+                temp_code,
+                file_index,
+                undefined_map,
+                export_hashmap
+              );
               const final_code = react_runtime(export_res.code);
               // link import from other js_file
               export_hashmap.set(file_index, {
@@ -77,14 +81,19 @@ function split_esbuild_output_chunk(
     }
     if (i === content.length - 1) {
       const diskpath = resolve_disk_path(file_location, working_dir);
-      const temp_code = print_import_code({
+      const temp_code = await print_import_code({
         code: stream,
         filepath: diskpath,
         file_index,
         export_hashmap,
-        import_hashmap: import_records,
+        undefined_map,
       });
-      const export_res = export_calc(temp_code, file_index);
+      const export_res = export_calc(
+        temp_code,
+        file_index,
+        undefined_map,
+        export_hashmap
+      );
       const final_code = react_runtime(export_res.code);
       export_hashmap.set(file_index, {
         index: file_index,
@@ -98,7 +107,40 @@ function split_esbuild_output_chunk(
   }
   file_location = "";
 
+  check_undefined(undefined_map, export_hashmap);
   return export_hashmap;
 }
 
-export { split_esbuild_output_chunk, ExportInfo };
+function check_undefined(
+  map: Map<number, AdditionalInfo>,
+  export_map: Map<number, ExportInfo>
+) {
+  const object: any = {};
+  const export_obj: any = {};
+  for (const [key, value] of map) {
+    object[key] = value;
+  }
+  for (const [key, value] of export_map) {
+    export_obj[key] = {
+      export: value.export_specifiers,
+      file: value.file_location,
+    };
+  }
+  const info = JSON.stringify(object, null, 2);
+  const export_info = JSON.stringify(export_obj, null, 2);
+  if ((process.env.WRITE_LOG_INFO ?? "false") === "true") {
+    const filepath = path.resolve(process.cwd(), "undefined_var.json");
+    fs.writeFileSync(filepath, info);
+    const export_filepath = path.resolve(process.cwd(), "export_var.json");
+    fs.writeFileSync(export_filepath, export_info);
+  }
+  if (Object.keys(object).length > 0) {
+    if ((process.env.IGNORE_CHECK_VARS ?? "false") === "true") {
+      console.log(`undefined variables info --> \n ${info}`);
+    } else {
+      throw new Error(`undefined variables info --> \n ${info}`);
+    }
+  }
+}
+
+export { split_esbuild_output_chunk };

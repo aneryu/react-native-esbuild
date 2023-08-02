@@ -7,8 +7,9 @@
   "scripts": {
     "setup": "rm -rf node_modules && npm install",
     "test": "rm -rf ./temp/* && NodeBundle=false ts-node-dev ./src/index.ts",
-    "dev": "TESTCASE=true ts-node-dev ./src/test.ts",
-    "build": "tsc"
+    "bundle": "rm -rf ./output/* && NodeBundle=true ts-node-dev ./src/index.ts",
+    "dev": "TESTCASE=true ts-node-dev ./test/eslint.ts",
+    "build": "rm -rf ./lib/* && tsc -p ./tsconfig.prod.json"
   },
   "keywords": [],
   "author": "",
@@ -17,13 +18,17 @@
     "@babel/generator": "7.22.9",
     "@babel/parser": "7.22.7",
     "@babel/traverse": "7.22.8",
-    "enhanced-resolve": "5.15.0"
+    "enhanced-resolve": "5.15.0",
+    "eslint": "8.46.0",
+    "@babel/eslint-parser": "7.22.9",
+    "@babel/preset-env": "7.22.9"
   },
   "dependencies": {
     "esbuild": "0.17.19",
-    "esbuild-plugin-flow": "github:dalcib/esbuild-plugin-flow"
+    "flow-remove-types": "2.213.1"
   },
   "devDependencies": {
+    "@types/eslint": "8.44.2",
     "@types/babel__generator": "7.6.4",
     "@types/babel__traverse": "7.20.1",
     "@types/node": "20.2.5",

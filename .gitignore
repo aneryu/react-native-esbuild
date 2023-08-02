@@ -2,3 +2,5 @@ ast.json
 temp/*
 .DS_Store
 node_modules
+export_var.json
+undefined_var.json

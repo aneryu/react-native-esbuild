@@ -1,91 +1,77 @@
 import * as esbuild from "esbuild";
-// @ts-ignore
-// import flow_plugin from "esbuild-plugin-flow";
-const flow_plugin = require("esbuild-plugin-flow");
-import { platform_ResolvePlugin } from "./resolve_platform";
+import { PlatformResolvePlugin } from "./resolve_platform";
 import { metro_perset_plugin } from "./metro_preset";
-import { import_recording_plugin } from "./import_calc";
-import { entry_add_console } from "./entry_console";
+import { ImportRecordingPlugin } from "./import_calc";
+import { EntryCalcPlugin, EntryAddConsole } from "./entry_console";
+import { ImageResolvePlugin } from "./image_resolve";
+import {
+  ComposeLoadPlugin,
+  ComposeResolvePlugin,
+  ComposeStartPlugin,
+} from "./compose";
+import { ImportEnhanceResolvePlugin } from "./enhance_resolve";
+import { get_external } from "./external";
+import { CustomEsbuildPlugin } from "./interface/plugin";
+import { CustomEsbuildResolvePlugin } from "./interface/resolve_plugin";
+import { CustomEsbuildLoadPlugin } from "./interface/load_plugin";
+import { CustomEsbuildStartPlugin } from "./interface/start_plugin";
 
 /**
  * 调用 esbuild 去打包 plugin entry 的方法 支持 tree-shaking
- *
- * @param entryPoints 打包入口
- * @param outfile 出口文件
- * @returns esbuild 打包结果
+ * @param entryPoints
+ * @param outfile
+ * @param workdir
+ * @param user_plugins
+ * @param extra_external
+ * @param bundle
+ * @returns
  */
 async function makebundle(
   entryPoints: any,
   outfile: string,
   workdir: string,
-  bundle: boolean = false
+  mobile_platform: "ios" | "android",
+  bundle: boolean,
+  user_plugins: CustomEsbuildPlugin[] = [],
+  extra_external: string[] = [],
 ) {
+  const user_resolve_plugins = user_plugins.filter(
+    (x) => x.type === "resolve-plugin"
+  ) as CustomEsbuildResolvePlugin[];
+
+  const user_load_plugins = user_plugins.filter(
+    (x) => x.type === "load-plugin"
+  ) as CustomEsbuildLoadPlugin[];
+
+  const user_start_plugins = user_plugins.filter(
+    (x) => x.type === "start-plugin"
+  ) as CustomEsbuildStartPlugin[];
+
   // 兼容 metro 的 插件
   const base_plugins = [
-    flow_plugin(/\.js$/),
-    platform_ResolvePlugin("ios"),
-    entry_add_console(),
+    ComposeStartPlugin([
+      ImportEnhanceResolvePlugin(mobile_platform),
+      EntryCalcPlugin,
+      ...user_start_plugins,
+    ]),
+    ComposeResolvePlugin([
+      ImportRecordingPlugin,
+      ImageResolvePlugin,
+      PlatformResolvePlugin(extra_external),
+      ...user_resolve_plugins,
+    ]),
+    ComposeLoadPlugin([EntryAddConsole, ...user_load_plugins]),
   ];
 
-  const plugins = [
-    ...base_plugins,
-    metro_perset_plugin(),
-    import_recording_plugin(),
-  ];
-
-  // independent common packages
-  const common_external = [
-    "prop-types",
-    "redux",
-    "react",
-    "react-redux",
-    "react-native",
-    "react-native-geocoder",
-    "react-native-linear-gradient",
-    "react-native-maps",
-    "react-native-shimmer-placeholder",
-    "@shopee/react-native-sdk",
-    "@shopee-rn/app-env",
-    "@shopee-rn/feature-toggles",
-    "@shopee-rn/translation",
-    "react-native-svg",
-    "react-native-webview",
-    "lottie-react-native",
-    "@react-native-async-storage/async-storage",
-    "@react-native-community/cameraroll",
-    "@react-native-community/clipboard",
-    "@react-native-community/netinfo",
-    "@react-native-community/viewpager",
-    "fetch_utils",
-    "@shopee/global-env",
-  ];
-  // extra commonjs packages
-  const cjs_external = [
-    "@shopee/item-redux",
-    "zlib",
-    "http",
-    "https",
-    "fs",
-    "net",
-    "tty",
-    "url",
-    "stream",
-    "assert",
-  ];
-
-  // custom external packages
-  const custom_external = [
-    "@shopee-rn/ui-common",
-    "@shopee/platform",
-    "@shopee/rn-recommendation-item-card",
-    "@shopee-rn/item-card",
-    "*.png", // PS: ignore png !!!
-    "*.jpg",
-    "*.gif",
-  ];
+  const plugins = [...base_plugins, metro_perset_plugin()];
 
   // external packages
-  const external = [...common_external, ...cjs_external, ...custom_external];
+  const external = [
+    ...get_external("common_external"),
+    ...get_external("cjs_external"),
+    ...get_external("custom_external"),
+    ...extra_external,
+  ];
 
   // 构建 主流程
   const res = await esbuild.build({
@@ -100,14 +86,12 @@ async function makebundle(
     target: "es6",
     sourceRoot: workdir,
     absWorkingDir: workdir,
-    mainFields: ["main", "module"],
+    mainFields: ["browser", "module", "main"],
     loader: {
-      // ".png": "file",
-      // ".svg": "text",
       ".ts": "ts",
       ".tsx": "tsx",
-      ".js": "tsx",
-      ".jsx": "tsx",
+      ".js": "js",
+      ".jsx": "jsx",
       ".json": "json",
     },
     // @ts-ignore

@@ -1,15 +1,19 @@
 import { parse } from "@babel/parser";
 import traverse from "@babel/traverse";
+import { AdditionalInfo, ExportInfo, ImportInfo } from "./interface/codeinfo";
+import { add_import } from "./print";
 
 /**
- *
+ * 方法有副作用 会修改 参数 undefined_map
  * @param code
  * @param external_packages
  * @returns
  */
 function export_calc(
   code: string,
-  file_index: number
+  file_index: number,
+  undefined_map: Map<number, AdditionalInfo>,
+  export_hashmap: Map<number, ExportInfo>
 ): { code: string; specifiers: string[] } {
   let export_specifiers: string[] = [];
   let ast: any = undefined;
@@ -32,16 +36,27 @@ function export_calc(
         path.node.kind === "var" &&
         path.parent.type === "Program"
       ) {
-        const info: any = path.node.declarations[0];
-        if (info) {
-          if (info.id.name) {
-            // example var obj = {a: 1, b: 2};
-            export_specifiers.push(info.id.name);
-          } else if (info.id.properties.length > 0) {
-            // example var {a, b} = {a: 1, b: 2};
-            info.id.properties.forEach((p: any) => {
-              export_specifiers.push(p.value.name);
-            });
+        const info_list: any = path.node.declarations;
+        // example var a = 1, b = 2;
+        for (let info of info_list) {
+          if (info) {
+            if (info.id.name) {
+              // example var obj = {a: 1, b: 2};
+              export_specifiers.push(info.id.name);
+            } else if (info.id.properties?.length ?? 0 > 0) {
+              // example var {a, b} = {a: 1, b: 2};
+              // example var {a: o, b} = {a: 1, b: 2};
+              info.id.properties.forEach((p: any) => {
+                export_specifiers.push(p.value.name);
+              });
+            } else if (info.id.elements?.length ?? 0 > 0) {
+              // example var [memoizedCloneSnapshot, invalidateMemoizedSnapshot$2] = obj;
+              info.id.elements.forEach((p: any) => {
+                export_specifiers.push(p.name);
+              });
+            } else {
+              throw new Error(`unknown var declaration \n ${info}`);
+            }
           }
         }
       } else if (
@@ -81,114 +96,64 @@ function export_calc(
    
 export { ${export_specifiers.join(", ")} };
   `;
+
+    // 处理循环依赖等复杂情况
+    if (export_specifiers.length > 0) {
+      import_un_resovle_specifiers(
+        file_index,
+        export_specifiers,
+        undefined_map,
+        export_hashmap
+      );
+    }
+
     return { code: final_code, specifiers: export_specifiers };
   }
+
+  // 处理仍旧没有导入的 依赖
+
   return { code, specifiers: [] };
 }
 
-export { export_calc };
-
-const test_code = `
-// App.tsx
-import {
-  SafeAreaView,
-  ScrollView,
-  StatusBar,
-  StyleSheet,
-  Text,
-  useColorScheme,
-  View
-} from "react-native";
-import {
-  Colors,
-  DebugInstructions,
-  Header,
-  LearnMoreLinks,
-  ReloadInstructions
-} from "react-native/Libraries/NewAppScreen";
-function Section({ children, title }) {
-  const isDarkMode = useColorScheme() === "dark";
-  return <View style={styles.sectionContainer}>
-    <Text
-      style={[
-        styles.sectionTitle,
-        {
-          color: isDarkMode ? Colors.white : Colors.black
-        }
-      ]}
-    >{title}</Text>
-    <Text
-      style={[
-        styles.sectionDescription,
-        {
-          color: isDarkMode ? Colors.light : Colors.dark
-        }
-      ]}
-    >{children}</Text>
-  </View>;
-}
-function App() {
-  const isDarkMode = useColorScheme() === "dark";
-  const backgroundStyle = {
-    backgroundColor: isDarkMode ? Colors.darker : Colors.lighter
-  };
-  return <SafeAreaView style={backgroundStyle}>
-    <StatusBar
-      barStyle={isDarkMode ? "light-content" : "dark-content"}
-      backgroundColor={backgroundStyle.backgroundColor}
-    />
-    <ScrollView
-      contentInsetAdjustmentBehavior="automatic"
-      style={backgroundStyle}
-    >
-      <Header />
-      <View
-        style={{
-          backgroundColor: isDarkMode ? Colors.black : Colors.white
-        }}
-      >
-        <Section title="Step One">
-          {"Edit "}
-          <Text style={styles.highlight}>App.tsx</Text>
-          {" to change this screen and then come back to see your edits."}
-        </Section>
-        <Section title="See Your Changes"><ReloadInstructions /></Section>
-        <Section title="Debug"><DebugInstructions /></Section>
-        <Section title="Learn More">Read the docs to discover what to do next:</Section>
-        <LearnMoreLinks />
-      </View>
-    </ScrollView>
-  </SafeAreaView>;
-}
-var styles = StyleSheet.create({
-  sectionContainer: {
-    marginTop: 32,
-    paddingHorizontal: 24
-  },
-  sectionTitle: {
-    fontSize: 24,
-    fontWeight: "600"
-  },
-  sectionDescription: {
-    marginTop: 8,
-    fontSize: 18,
-    fontWeight: "400"
-  },
-  highlight: {
-    fontWeight: "700"
+function import_un_resovle_specifiers(
+  fileindex: number,
+  specifiers: string[],
+  undefined_map: Map<number, AdditionalInfo>,
+  export_hashmap: Map<number, ExportInfo>
+) {
+  for (let [index, info] of undefined_map.entries()) {
+    // 算出本文件 可以导入的 变量
+    const resolve_specifiers = specifiers.filter((p) =>
+      info.undefined_variables.includes(p)
+    );
+    // 可以提供导出 当前文件
+    if (resolve_specifiers.length > 0) {
+      // 去除可以导入的变量
+      const un_resolve_specifiers = info.undefined_variables.filter(
+        (x) => !resolve_specifiers.includes(x)
+      );
+      if (un_resolve_specifiers.length === 0) {
+        //如果全部导入的 消除记录
+        undefined_map.delete(index);
+      } else {
+        // 还有剩余就修改记录
+        info.undefined_variables = un_resolve_specifiers;
+      }
+      // 开始导入代码
+      const import_info: ImportInfo = {
+        index: fileindex,
+        specifiers: resolve_specifiers,
+      };
+      const change_file = export_hashmap.get(index);
+      if (change_file) {
+        change_file.code = add_import(change_file.code, [import_info]);
+      } else {
+        throw new Error(
+          `can not find code by index in the export_hashmap : ${index}`
+        );
+      }
+    }
   }
-});
-var App_default = App;
-`;
-
-// const import_test_code = `
-// import { AppRegistry as app } from "react-native";
-// import * as rn from "react-native";
-// import reactnative from "react-native";
-// import { AppRegistry } from "react-native";
-// `;
-
-if (process.env.TESTCASE === "true") {
-  export_calc(test_code, 0);
-  // export_calc(import_test_code);
 }
+
+export { export_calc };

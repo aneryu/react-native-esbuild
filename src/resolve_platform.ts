@@ -1,116 +1,138 @@
-import * as esbuild from "esbuild";
 import path from "path";
 import fs from "fs";
+import { CustomEsbuildResolvePlugin } from "./interface/resolve_plugin";
+import { resolve_diskpath } from "./resolve_diskpath";
+import { get_external } from "./external";
+
+/**
+ * 递归查找 package.json 文件
+ * @param dirpath
+ * @returns
+ */
+function get_packagejson_dir(dirpath: string): string {
+  if (fs.existsSync(path.resolve(dirpath, "./package.json"))) {
+    return dirpath;
+  } else {
+    return get_packagejson_dir(path.resolve(dirpath, "../"));
+  }
+}
+
+/**
+ *
+ * @param filepath
+ * @param frompath
+ * @param importer
+ * @param resolve
+ * @param extra_external
+ * @returns
+ */
+function is_external(
+  filepath: string,
+  frompath: string,
+  importer: string,
+  resolve: (from_path: string, importer_path: string) => string | false,
+  extra_external: string[]
+): { external: boolean; type: undefined | "common" | "custom" } {
+  // example importpath: react-native
+  const common_external = get_external("common_external");
+  const custom_external = [
+    ...get_external("custom_external"),
+    ...extra_external,
+  ];
+  if (
+    common_external.includes(frompath) ||
+    custom_external.includes(frompath)
+  ) {
+    return { external: true, type: "common" };
+  } else if (custom_external.includes(frompath)) {
+    return { external: true, type: "custom" };
+  }
+  const externals = [...common_external, ...custom_external];
+  // example filepath: react-native/index.js
+  const like_external = externals.find((item) => frompath.includes(item));
+  if (like_external) {
+    try {
+      const res = resolve(like_external, importer);
+      if (res) {
+        const packagejson_dir = get_packagejson_dir(path.dirname(res));
+        if (filepath.startsWith(packagejson_dir + "/")) {
+          if (common_external.includes(like_external)) {
+            return { external: true, type: "common" };
+          } else {
+            return { external: true, type: "custom" };
+          }
+        } else {
+          return { external: false, type: undefined };
+        }
+      } else {
+        return { external: false, type: undefined };
+      }
+    } catch (ex) {
+      return { external: false, type: undefined };
+    }
+  }
+  return { external: false, type: undefined };
+}
 
 /**
  * esbuild support platform resolve plugin about module-resolver ios|android
  * @param platform ios|android
  * @returns
  */
-const platform_ResolvePlugin = (platform: string, alias: string[][] = []) => {
+const PlatformResolvePlugin: (
+  extra_external: string[]
+) => CustomEsbuildResolvePlugin = (extra_external) => {
   return {
     name: "reactnatie-resolve-plugin",
-    setup(build: esbuild.PluginBuild) {
-      build.onResolve({ filter: /.*/ }, async (arg: esbuild.OnResolveArgs) => {
-        for (const [prefix, pathPrefix] of alias) {
-          if (arg.path.startsWith(prefix)) {
-            const newpath = arg.path.replace(prefix, pathPrefix);
-            if (fs.existsSync(newpath)) {
-              arg.path = newpath;
-              break;
-            }
+    type: "resolve-plugin",
+    stage: 0,
+    hook: (build, arg) => {
+      const extname = path.extname(arg.importer);
+      const cjs_external = get_external("cjs_external");
+      if (arg.kind == "import-statement" || arg.kind == "require-call") {
+        if (
+          extname.includes("js") ||
+          extname.includes("mjs") ||
+          extname.includes("jsx") ||
+          extname.includes("tsx") ||
+          extname.includes("ts")
+        ) {
+          const en_resolver = Reflect.get(
+            build.initialOptions,
+            "enhance_resolver"
+          );
+          if (cjs_external.includes(arg.path)) {
+            return { path: arg.path, external: true };
           }
-        }
-        if (arg.path.endsWith(".png")) {
-          const p = path.resolve(arg.resolveDir, arg.path);
-          return {
-            path: p,
-            external: true,
+          const internal_resolve = (
+            from_path: string,
+            importer_path: string
+          ) => {
+            return resolve_diskpath(en_resolver!, from_path, importer_path);
           };
-        }
-        // support png alias 
-        if (arg.importer.includes("node_modules")) {
-          const extname = path.extname(arg.importer);
-          const import_extname = path.extname(arg.path);
-          if (
-            (arg.kind == "import-statement" || arg.kind == "require-call") &&
-            import_extname === ""
-          ) {
-            if (
-              extname.includes("js") ||
-              extname.includes("jsx") ||
-              extname.includes("tsx") ||
-              extname.includes("ts")
-            ) {
-              if (arg.path.startsWith("./") || arg.path.startsWith("../")) {
-                if (!ehance_resolve(arg.importer, arg.path)) {
-                  const final_filepath = ehance_native_resolve(
-                    arg.importer,
-                    arg.path,
-                    platform
-                  );
-                  return { path: final_filepath };
-                }
-              }
+          const res = internal_resolve(arg.path, arg.importer);
+          if (res) {
+            const if_external = is_external(
+              res,
+              arg.path,
+              arg.importer,
+              internal_resolve,
+              extra_external
+            );
+            if (if_external.external) {
+              return {
+                external: true,
+                path: if_external.type === "common" ? arg.path : res,
+              };
+            } else {
+              return { path: res };
             }
           }
         }
-        return undefined;
-      });
+      }
+      return undefined;
     },
   };
 };
 
-function ehance_resolve(basepath: string, filepath: string): boolean {
-  const joinpath = path.resolve(path.dirname(basepath), filepath);
-  const trypath = [
-    joinpath + ".js",
-    joinpath + ".jsx",
-    joinpath + ".ts",
-    joinpath + ".tsx",
-    joinpath + "/index.js",
-    joinpath + "/index.jsx",
-    joinpath + "/index.ts",
-    joinpath + "/index.tsx",
-  ];
-  if (
-    trypath.map((p) => fs.existsSync(p)).filter((x) => x === true).length == 0
-  ) {
-    return false;
-  }
-  return true;
-}
-
-function ehance_native_resolve(
-  basepath: string,
-  filepath: string,
-  platform: string
-): string {
-  let existpath = "";
-  const joinpath = path.resolve(path.dirname(basepath), filepath);
-  const trypath = [
-    joinpath + "." + platform + ".js",
-    joinpath + "." + platform + ".jsx",
-    joinpath + "." + platform + ".ts",
-    joinpath + "." + platform + ".tsx",
-    joinpath + "." + platform + "/index.js",
-    joinpath + "." + platform + "/index.jsx",
-    joinpath + "." + platform + "/index.ts",
-    joinpath + "." + platform + "/index.tsx",
-  ];
-  for (let p of trypath) {
-    if (fs.existsSync(p)) {
-      existpath = p;
-      break;
-    }
-  }
-  if (existpath === "") {
-    throw new Error(
-      `"can't find ${basepath} and ${filepath} to platform ${platform} file exist file system!"` +
-        "\n"
-    );
-  }
-  return existpath;
-}
-
-export { platform_ResolvePlugin };
+export { PlatformResolvePlugin };

@@ -4,6 +4,23 @@ import { CustomEsbuildStartPlugin } from "./interface/start_plugin";
 import { CustomEsbuildLoadPlugin } from "./interface/load_plugin";
 import fs from "node:fs";
 
+/**
+ * 连续变形
+ * @param code 
+ * @param tranform_func 
+ * @returns 
+ */
+export function compose_transform(
+  code: string,
+  ...tranform_func: ((code: string) => string)[]
+) {
+  let result = code;
+  for (const transform of tranform_func) {
+    result = transform(result);
+  }
+  return result;
+}
+
 export function ComposeStartPlugin(
   plugins: CustomEsbuildStartPlugin[]
 ): esbuild.Plugin {

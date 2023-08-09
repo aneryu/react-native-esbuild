@@ -5,6 +5,8 @@ import { react_runtime } from "./react-runtime";
 import { AdditionalInfo, ExportInfo } from "./interface/codeinfo";
 import path from "node:path";
 import fs from "node:fs";
+import { compose_transform } from "./compose";
+import { require_runtime } from "./require-runtime";
 
 /**
  * split esbuild code accroding //file:xxx.ts as mark
@@ -59,7 +61,11 @@ async function split_esbuild_output_chunk(
                 undefined_map,
                 export_hashmap
               );
-              const final_code = react_runtime(export_res.code);
+              const final_code = compose_transform(
+                export_res.code,
+                react_runtime,
+                require_runtime
+              );
               // link import from other js_file
               export_hashmap.set(file_index, {
                 index: file_index,
@@ -94,7 +100,11 @@ async function split_esbuild_output_chunk(
         undefined_map,
         export_hashmap
       );
-      const final_code = react_runtime(export_res.code);
+      const final_code = compose_transform(
+        export_res.code,
+        react_runtime,
+        require_runtime
+      );
       export_hashmap.set(file_index, {
         index: file_index,
         file_location: diskpath,

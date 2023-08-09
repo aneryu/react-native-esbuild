@@ -1,5 +1,5 @@
 {
-  "name": "react-native-esbuild",
+  "name": "@shopee-rn/bundle-preprocess",
   "private": true,
   "version": "1.0.0",
   "description": "",
@@ -9,7 +9,8 @@
     "test": "rm -rf ./temp/* && NodeBundle=false ts-node-dev ./src/index.ts",
     "bundle": "rm -rf ./output/* && NodeBundle=true ts-node-dev ./src/index.ts",
     "dev": "TESTCASE=true ts-node-dev ./test/require.ts",
-    "build": "rm -rf ./lib/* && tsc -p ./tsconfig.prod.json"
+    "build": "rm -rf ./lib/* && tsc -p ./tsconfig.prod.json",
+    "postinstall": "npm run build"
   },
   "keywords": [],
   "author": "",

@@ -5,6 +5,7 @@ import { ImportRecordingPlugin } from "./import_calc";
 import { EntryCalcPlugin, EntryAddConsole } from "./entry_console";
 import { ImageResolvePlugin } from "./image_resolve";
 import {
+  ComposeEndPlugin,
   ComposeLoadPlugin,
   ComposeResolvePlugin,
   ComposeStartPlugin,
@@ -15,6 +16,7 @@ import { CustomEsbuildPlugin } from "./interface/plugin";
 import { CustomEsbuildResolvePlugin } from "./interface/resolve_plugin";
 import { CustomEsbuildLoadPlugin } from "./interface/load_plugin";
 import { CustomEsbuildStartPlugin } from "./interface/start_plugin";
+import { CustomEsbuildEndPlugin } from "./interface/end_plugin";
 
 /**
  * 调用 esbuild 去打包 plugin entry 的方法 支持 tree-shaking
@@ -33,7 +35,7 @@ async function makebundle(
   mobile_platform: "ios" | "android",
   bundle: boolean,
   user_plugins: CustomEsbuildPlugin[] = [],
-  extra_external: string[] = [],
+  extra_external: string[] = []
 ) {
   const user_resolve_plugins = user_plugins.filter(
     (x) => x.type === "resolve-plugin"
@@ -46,6 +48,10 @@ async function makebundle(
   const user_start_plugins = user_plugins.filter(
     (x) => x.type === "start-plugin"
   ) as CustomEsbuildStartPlugin[];
+
+  const user_end_plugins = user_plugins.filter(
+    (x) => x.type === "end-plugin"
+  ) as CustomEsbuildEndPlugin[];
 
   // 兼容 metro 的 插件
   const base_plugins = [
@@ -61,6 +67,7 @@ async function makebundle(
       ...user_resolve_plugins,
     ]),
     ComposeLoadPlugin([EntryAddConsole, ...user_load_plugins]),
+    ComposeEndPlugin([...user_end_plugins]),
   ];
 
   const plugins = [...base_plugins, metro_perset_plugin()];

@@ -3,6 +3,7 @@ import * as esbuild from "esbuild";
 import { CustomEsbuildStartPlugin } from "./interface/start_plugin";
 import { CustomEsbuildLoadPlugin } from "./interface/load_plugin";
 import fs from "node:fs";
+import { CustomEsbuildEndPlugin } from "./interface/end_plugin";
 
 export function ComposeStartPlugin(
   plugins: CustomEsbuildStartPlugin[]
@@ -17,6 +18,30 @@ export function ComposeStartPlugin(
         for (const plugin of real_plugins) {
           try {
             await plugin.hook(build);
+          } catch (ex: any) {
+            throw new Error(
+              `plugin ${plugin.name} \n error: ${ex.message} \n stack: ${ex.stack}`
+            );
+          }
+        }
+      });
+    },
+  };
+}
+
+export function ComposeEndPlugin(
+  plugins: CustomEsbuildEndPlugin[]
+): esbuild.Plugin {
+  return {
+    name: "compose-end-plugin",
+    setup(build: esbuild.PluginBuild) {
+      let real_plugins = plugins.sort((a, b) => {
+        return a.stage - b.stage;
+      });
+      build.onEnd(async (res) => {
+        for (const plugin of real_plugins) {
+          try {
+            await plugin.hook(build, res);
           } catch (ex: any) {
             throw new Error(
               `plugin ${plugin.name} \n error: ${ex.message} \n stack: ${ex.stack}`

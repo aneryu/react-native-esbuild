@@ -1,6 +1,7 @@
 import { makebundle } from "./metro_esbuild";
 import path from "node:path";
 import { FlowExternalPlugin, FlowRemoveTypesPlugin } from "./external_flow";
+import { RuntimePolyfillPlugin } from "./polyfill_runtime";
 
 const js_flow_files = [
   "packages/App/redux/user/reducer.js",
@@ -61,9 +62,9 @@ function getCase(casename: TestCase): ITestCase {
     case TestCase.shopeepay:
       return {
         entryPoints: [
-          "/Users/jason.zhu/Desktop/company/shopeepay-plugin/bundles/shopee/src/index.ts",
+          "/Users/jie_shen/works/shopeepay/shopeepay-plugin/bundles/shopee/src/index.ts",
         ],
-        workdir: "/Users/jason.zhu/Desktop/company/shopeepay-plugin/",
+        workdir: "/Users/jie_shen/works/shopeepay/shopeepay-plugin/",
       };
     default:
       return {
@@ -89,6 +90,7 @@ if (caseName == TestCase.shopeepay) {
     ...user_plugin,
     FlowExternalPlugin(js_flow_files),
     FlowRemoveTypesPlugin,
+    RuntimePolyfillPlugin,
   ];
 } else if (caseName == TestCase.productpage) {
   user_plugin = [
